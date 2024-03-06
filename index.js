@@ -1,43 +1,38 @@
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 dotenv.config();
-
-import { baseUrl } from "../constants.js";
 
 const app = express();
 const port = process.env.PORT || 3080;
 
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 const corsOptions = {
-  origin: baseUrl.client || process.env.CLIENT_URL,
+  origin: "http://localhost:3000",
   credentials: true,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));
 
-console.log("before connecting to mongodb");
+console.log("Trying to connect to Mongo DB...");
 const connectionString = process.env.MONGODB_URI;
-
 const client = new MongoClient(connectionString);
 await client.connect();
-console.log("Connected to the MongoDB server");
+console.log("Successfully connect to Mongo DB!");
 // Access the database
 const database = client.db("yakir_li");
-// Access the collection
+// Access the collections
 const PersonsCollection = database.collection("persons");
 const CounterCollection = database.collection("counter");
 
 app.get("/", cors(corsOptions), (req, res) => {
-  res.send("Welcome to Yakir Li Candles Server");
+  res.send("Welcome to Yakir Li Candles' Server :)");
 });
 
 app.get("/user", cors(corsOptions), (req, res) => {
@@ -69,9 +64,9 @@ app.get("/counterLitCandles", cors(corsOptions), async (req, res) => {
 
 app.post("/persons", async (req, res) => {
   try {
-    const { name, age, city } = req.body;
-    // Insert the new person into the collection
+    const { name, age, city, id } = req.body;
     const result = await PersonsCollection.insertOne({
+      id,
       name,
       age,
       city,
@@ -83,13 +78,12 @@ app.post("/persons", async (req, res) => {
   }
 });
 
-app.put("/persons/:personId", async (req, res) => {
-  const { personId } = req.params;
-  // add new users to users array in person (as user that lit the candle)
+app.put("/persons/:personId&:userId", async (req, res) => {
+  const { personId, userId } = req.params;
+  // add new user to users array in person (as user that lit the candle)
   try {
-    const userId = req.cookies?.userId || uuidv4();
     const updatedPerson = await PersonsCollection.findOneAndUpdate(
-      { _id: new ObjectId(personId) },
+      { id: personId },
       { $push: { users: userId } },
       {
         returnDocument: "after",
